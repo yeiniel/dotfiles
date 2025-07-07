@@ -1,0 +1,8 @@
+[init]
+	defaultBranch = main
+[user]
+	name = Yeiniel Suarez Sosa
+	email = 1140833+yeiniel@users.noreply.github.com
+	signingkey = FEB60AB77E93FDC0
+[commit]
+	gpgsign = true
