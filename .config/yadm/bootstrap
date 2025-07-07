@@ -50,7 +50,7 @@ log "Setting up dotfiles with yadm..."
 DOTFILES_REPO="https://github.com/yeiniel/dotfiles"
 
 log "Cloning dotfiles from $DOTFILES_REPO..."
-if yadm clone "$DOTFILES_REPO" 2>/dev/null; then
+if yadm clone "$DOTFILES_REPO" >/dev/null 2>&1; then
     log "Dotfiles cloned successfully"
 else
     warn "Repository already exists, pulling latest changes..."
