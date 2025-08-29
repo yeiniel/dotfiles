@@ -57,9 +57,33 @@ else
     yadm pull
 fi
 
-# Restart GPG agent to apply new configuration (SSH support)
-log "Restarting GPG agent to apply SSH support configuration..."
-systemctl --user restart gpg-agent.service 2>/dev/null || {
+# Dynamically update SSH config with current user's UID
+log "Updating SSH config with UID..."
+if [ -f "$HOME/.ssh/config" ]; then
+    sed -i "s|/run/user/1000/|/run/user/$UID/|" "$HOME/.ssh/config"
+    log "SSH config updated successfully."
+else
+    warn "No ~/.ssh/config file found to update."
+fi
+
+# Check if the GPG key for SSH is available
+log "Checking for GPG key specified in sshcontrol..."
+if [ -f "$HOME/.gnupg/sshcontrol" ]; then
+    GPG_KEYGRIP=$(cut -d' ' -f1 "$HOME/.gnupg/sshcontrol" | head -n1)
+    if gpg --list-secret-keys --with-keygrip | grep -q "$GPG_KEYGRIP"; then
+        log "Required GPG key found in keyring."
+    else
+        error "GPG key with keygrip '$GPG_KEYGRIP' not found in your GPG keyring."
+        error "Please import your secret key before running this script again."
+        exit 1
+    fi
+else
+    warn "No ~/.gnupg/sshcontrol file found. Skipping GPG key check."
+fi
+
+# Enable and restart GPG agent socket to apply new configuration (SSH support)
+log "Enabling and restarting GPG agent socket for SSH support..."
+systemctl --user enable --now gpg-agent.socket 2>/dev/null || {
     warn "systemctl failed, using gpgconf fallback..."
     gpgconf --kill gpg-agent
 }
@@ -83,7 +107,7 @@ echo -e "${BLUE}What was configured:${NC}"
 echo "✓ System packages updated"
 echo "✓ Essential packages installed (git, gnupg, openssh, yadm)"
 echo "✓ Dotfiles cloned from https://github.com/yeiniel/dotfiles"
-echo "✓ GPG agent restarted with SSH support"
+echo "✓ GPG agent socket enabled with SSH support"
 echo "✓ SSH connection to GitHub tested"
 echo
 echo -e "${BLUE}Next steps:${NC}"
