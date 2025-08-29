@@ -57,28 +57,21 @@ else
     yadm pull
 fi
 
-# Dynamically update SSH config with current user's UID
-log "Updating SSH config with UID..."
-if [ -f "$HOME/.ssh/config" ]; then
-    sed -i "s|/run/user/1000/|/run/user/$UID/|" "$HOME/.ssh/config"
-    log "SSH config updated successfully."
-else
-    warn "No ~/.ssh/config file found to update."
-fi
+# Dynamically update SSH config with GPG agent socket path
+log "Updating SSH config with GPG agent socket path..."
+AGENT_SSH_SOCKET=$(gpgconf --list-dirs agent-ssh-socket)
+sed -i "s|/run/user/1000/gnupg/S.gpg-agent.ssh|$AGENT_SSH_SOCKET|" "$HOME/.ssh/config"
+log "SSH config updated successfully."
 
 # Check if the GPG key for SSH is available
 log "Checking for GPG key specified in sshcontrol..."
-if [ -f "$HOME/.gnupg/sshcontrol" ]; then
-    GPG_KEYGRIP=$(cut -d' ' -f1 "$HOME/.gnupg/sshcontrol" | head -n1)
-    if gpg --list-secret-keys --with-keygrip | grep -q "$GPG_KEYGRIP"; then
-        log "Required GPG key found in keyring."
-    else
-        error "GPG key with keygrip '$GPG_KEYGRIP' not found in your GPG keyring."
-        error "Please import your secret key before running this script again."
-        exit 1
-    fi
+GPG_KEYGRIP=$(cut -d' ' -f1 "$HOME/.gnupg/sshcontrol" | head -n1)
+if gpg --list-secret-keys --with-keygrip | grep -q "$GPG_KEYGRIP"; then
+    log "Required GPG key found in keyring."
 else
-    warn "No ~/.gnupg/sshcontrol file found. Skipping GPG key check."
+    error "GPG key with keygrip '$GPG_KEYGRIP' not found in your GPG keyring."
+    error "Please import your secret key before running this script again."
+    exit 1
 fi
 
 # Enable and restart GPG agent socket to apply new configuration (SSH support)
